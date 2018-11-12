@@ -1,0 +1,113 @@
+* Elm                                                              :platform:
+** Model
+*** TODO can we embed control characters in strings?
+** View
+** Update/Control
+* Browser                                                          :platform:
+* TODO World                                                          :model:
+  The field of movement and objects within is represented as an ordinary string named 'world'
+  - Pros
+    + implements/enforces the emulation of a text editor
+    + simple views?
+  - Cons
+    - complex controls?
+   If the game is really, really about text, we'll have no real in-game 'objects', just bytes.
+   + char datatype implements game functionality:
+     switch statements within functions that traverse world
+     constant lookup tables if data-directed programming is desired.
+   The defacto character encoding set, ASCII, already gives us a wide-range of symbols to use
+** Control Characters                                                 :ASCII:
+   It might be interesting just to see how many we can write into a runtime string without breaking things horribly. Really puts Elm's motto to the test.
+   If things do break horribly but we really want them, it might be worth making a custom string interface to work around it.
+   If we're making a collectathon they could make excellent trophies/secrets.
+   - http://www.aivosto.com/articles/control-characters.html
+     "It's not uncommon to find control characters forbidden in data. Control characters can have unwanted or unknown side-effects.
+     The easiest way for programmers to deal with them is to shut their eyes or deny such characters altogether."
+   - https://en.wikipedia.org/wiki/Newline
+     A typical file/input stream is organized using special characters to denote line breaks and the end of a file.
+     These have various names and representations amongst systems and languages, EOL, line feed, etc.
+     A text editor will break a file into lines for easy navigation and viewing, but the underlying file contains these explicit characters.
+     Having world be a list of strings instead of a single string may be a worthwhile EoL abstraction
+** Text                                                               :ASCII:
+   - Letters
+   - Numbers
+   - Whitespace
+   - Symbols
+     - Conjunctions/Operators
+     - Delimiters
+     - Brackets
+     - Punctuation
+*** font                                                               :view:
+    needs distinguishable glyphs for control characters and whitespace
+    customizable glyphs could go a long way in building aesthetic
+*** misc widgets/resources
+   http://ascii.co.uk/table
+   http://ascii.co.uk/interactive
+   http://ascii.co.uk/art
+   http://ascii.co.uk/text
+   http://ascii.co.uk/urlencoding
+   https://en.wikipedia.org/wiki/ASCII
+   man ascii
+* TODO Point                                                          :model:
+  The position of the Hero/cursor. 
+  an integer mod length world?
+  target of movement controls
+** multiplicity
+    - Some text editors have multiple cursor functionality
+      - vim achieves similar functionality through different means, might be interesting to contrast them
+    - if we include 'enemies' or something that manipulates the world outside of the player it might we worth considering implementing it this way?
+      - imagine the frustration of trying to write something as someone else is trying to delete it.
+      - frustrating problem + interesting solution = fun game
+* LATER Registers                                                     :model:
+  At some point we may want to implement the ability to collect symbols and strings into registers for later use.
+  As a gameplay mechanic this is essentially an inventory system.
+  If there is a bijective correspondence between our movement controls and some subset of ASCII, we can treat the code as data and use the same registers for macros and text.
+  Consumption of register data is an interesting game-play mechanic
+* Syntactic movement                                                :control:
+  'Simple' movement functions whose action depends only minimally on the world local to the point.
+  - In real text editors, their behaviour may be subtle and subject to preference.
+    In a game, we'll probably demand the most simple and predictable implementation that enables the gameplay we're interested in.
+** TODO column                                                          :h:l:
+   Move left or right. Probably the simplest control to implement.
+*** Cannot move across EoLs?
+** TODO row                                                             :j:k:
+   Move up and down rows/lines.
+*** The behaviour of moving between disparate rows?
+** TODO line                                                   :caret:dollar:
+   Move to begining and end of lines
+* Semantic movement                                                 :control:
+  Movement functions whose action depends on significant parsing of world local to the point.
+  Effectively traverses within and across hierarchies of meaning and textual structure.
+  In real textual environments, their behaviour depends hugely on context and personal preference.
+  e.g. unix shells contain variables like IFS or WORDCHARS which list characters used for whitespace or word separators.
+  In a game, we might promote this configurability to an element of gameplay,
+** TODO word                                                          :b:w:e:
+   Generally moves between elementary textual elements, such as clusters of alphanumeric characters seperated by whitespace
+** sentence?
+** brackets?
+** headings?
+* LATER Search                                                      :control:
+  Functions that take a character or string as an argument and perform local/global searches
+** char                                                              :f:F:;:
+   f and F search for a char, given as a postfix argument, incrementally forwards/backwards.
+   ; repeats
+** string                                                            :/:?:n:N:
+** incremental?
+   Seems like more of a personal quality-of-life feature than a different type of search
+   Probably not worth implementing as a separate search, but maybe worth thinking about
+   the specific mechanics of the default search.
+* Port                                                                 :view:
+  The displayed image of the game world.
+  Analogous to the camera in a game with 2d/3d physics, but on a truly discrete domain.
+  A text buffer environment can still have very impressive and useful view manipulation:
+  - viewports can potentially:
+    - scroll left/right
+    - zoom (may or may not be equivalent to font resizing)
+    - fold(hide) regions of text
+    - provide multiple layers of detail in peripheral panes (document structure/outlines)
+  But for our prototype just displaying the string should be fine.
+** TODO text element                                                   :html:
+   We need a space on the screen to draw the buffer.
+* LATER HUD                                                            :view:
+  UI elements that are used for displaying information
+  e.g. game context, progress trackers, register contents
