@@ -35,14 +35,14 @@ init =
 
 
 type Msg
-    = KeyDowns String
+    = KeyPress String
     | ClearPressed
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        KeyDowns code ->
+        KeyPress code ->
             ( { model | world = model.world ++ code }, Cmd.none )
 
         ClearPressed ->
@@ -52,15 +52,13 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Events.onKeyDown (Decode.map KeyDowns keyDecoder)
+        [ Events.onKeyPress (Decode.map KeyPress keyDecoder)
         , Events.onKeyUp (Decode.succeed ClearPressed)
         ]
-
 
 keyDecoder : Decode.Decoder String
 keyDecoder =
     Decode.field "key" Decode.string
-
 
 view : Model -> Html Msg
 view model =
