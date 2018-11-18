@@ -65,14 +65,14 @@ init =
 
 
 type Msg
-    = KeyDowns String
+    = KeyPress String
     | ClearPressed
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        KeyDowns code ->
+        KeyPress code ->
             case code of
                 "h" -> (backward model, Cmd.none)
                 "l" -> (forward model, Cmd.none)
@@ -84,7 +84,7 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Events.onKeyDown (Decode.map KeyDowns keyDecoder)
+        [ Events.onKeyPress (Decode.map KeyPress keyDecoder)
         , Events.onKeyUp (Decode.succeed ClearPressed)
         ]
 
