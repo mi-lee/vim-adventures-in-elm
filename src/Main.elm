@@ -24,19 +24,22 @@ type alias Model =
     , point : Int
     }
 
+wall = "#"
+newLine = "\n"
+
 -- Operator functions
 -- Moves point forward/backward by a character
 forward: Model -> Model
 forward model =
-    if model.point > (String.length (String.concat (String.lines (model.world)))) then
+    if (String.slice (model.point + 1) (model.point + 2) model.world) == wall then
       { model | point = model.point}
     else
       { model | point = model.point + 1} -- TODO test for EoL, EoF
 backward model =
-    if model.point > 0 then
-        { model | point = model.point - 1} -- TODO test for EoL, BoF
+    if (String.slice (model.point - 1) model.point model.world) == wall then
+        { model | point = model.point } -- TODO test for EoL, BoF
     else
-        { model | point = model.point }
+        { model | point = model.point - 1}
 -- Moves point up/down lines
 upward model =
     model -- TODO traverse back to EoL to measure column(get-column), traverse back to next EoL and forward to appropriate column,
@@ -52,12 +55,7 @@ endline model =
 -- Utility functions
 getcolumn: Model -> Int -- Gets column of point
 getcolumn model =
-    (getArrayOfColumnSizes model)
-
--- Returns array of column sizes
-getArrayOfColumnSizes: Model -> (List Int)
-getArrayOfColumnSizes model =
-    List.map String.length (String.lines (model.world))
+    1
 
 -- Traverses string
 --  for number of characters
@@ -67,8 +65,8 @@ getArrayOfColumnSizes model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { world = "+----+----+----+\n               |\n+----+----+    +\n|         |      \n+    +----+----+----+"
-      , point = 17
+    ( { world = "+----+----+----+\n#              #\n+----+----+    +\n|         |      \n+    +----+----+----+"
+      , point = 18
       }
     , Cmd.none
     )
