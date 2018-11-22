@@ -26,22 +26,72 @@ type alias Model =
     , point : Int
     }
 
+-- Character utilities
 wall = "#"
 newLine = "\n"
 
+obstructs: Operator -> String -> Bool
+obstructs op char =
+    case op of
+      _ ->
+          case char of
+               "#" -> True
+               "\n" -> True
+               _ -> False
+
+-- String utilities
+--- TODO It's worth discussing any differences between Strings and list of Chars
+--- or how we might use the type system to organize the various char operations
+
+-- Returns the string/char?? at index location.
+--- Bamboozling that we need write this
+access: String -> Int -> String
+access string index =
+    String.slice index (index + 1) string
+
+-- Model utilities
+scan: Model-> Int -> String
+scan model distance =
+    access model.world (model.point + distance)
+-- Usage: scan model 0 is under the cursor, scan model +/-1 is forward/backward
+-- TODO who wants scan to check for world boundaries? (0 and length of world)
+
+seek: Model-> Int -> Model
+seek model distance =
+    { model | point  = model.point + distance }
+
+
+-- Robust utility function that find char and begining/endlines could be built on
+-- Returns the stream of distances to a string
+locate: Model -> Int -> Char -> Int
+locate model number char =
+    if number < 0 then
+        1
+    else
+        -1 --TODO Implement
+
+
+
+
+
+
 -- Operator functions
 -- Moves point forward/backward by a character
-forward: Model -> Model
+ -- TODO test for EoL
+ -- TODO? || model.point < 1 This check may be taken up in scan
+type alias Operator = Model -> Model
+forward: Operator
 forward model =
-    if (String.slice (model.point + 1) (model.point + 2) model.world) == wall then
-      { model | point = model.point}
+    if scan model 1 |> obstructs forward then
+        model
     else
-      { model | point = model.point + 1} -- TODO test for EoL, EoF
+        seek model 1
+backward: Operator
 backward model =
-    if ((String.slice (model.point - 1) model.point model.world) == wall) || model.point < 1 then
-        { model | point = model.point } -- TODO test for EoL, BoF
+    if scan model -1 |> obstructs backward then
+        model
     else
-        { model | point = model.point - 1}
+        seek model -1
 
 -- Moves point up/down lines
 upward model =
@@ -58,6 +108,7 @@ downward model =
     { model | point = nextNewLineCharacter + row }
 
 -- Moves point to beginning/end of lines
+-- TODO Should they travel through obstructions?
 startline model =
     { model | point = model.point + 2}
 endline model =
@@ -97,8 +148,8 @@ update msg model =
             case code of
                 "h" -> (backward model, Cmd.none)
                 "l" -> (forward model, Cmd.none)
-                "j" -> (upward model, Cmd.none)
-                "k" -> (downward model, Cmd.none)
+                "k" -> (upward model, Cmd.none)
+                "j" -> (downward model, Cmd.none)
                 "^" -> (startline model, Cmd.none)
                 "$" -> (endline model, Cmd.none)
                 _   -> ( { model | world = model.world }, Cmd.none )
