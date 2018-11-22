@@ -97,7 +97,7 @@ keyDecoder =
 view : Model -> Html Msg
 view model =
     div
-        [ style "white-space" "pre-line"
+        [ style "white-space" "pre-wrap"
         , style "font-family" "monospace"
         ]
         [ text (String.slice 0 model.point model.world)
