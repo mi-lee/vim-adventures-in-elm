@@ -7,7 +7,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Json.Decode as Decode
 import String
-
+import Debug
+import Array
+import Basics
 
 main : Program () Model Msg
 main =
@@ -24,30 +26,49 @@ type alias Model =
     , point : Int
     }
 
+wall = "#"
+newLine = "\n"
+
 -- Operator functions
 -- Moves point forward/backward by a character
 forward: Model -> Model
 forward model =
-    { model | point = model.point + 1} -- TODO test for EoL, EoF
+    if (String.slice (model.point + 1) (model.point + 2) model.world) == wall then
+      { model | point = model.point}
+    else
+      { model | point = model.point + 1} -- TODO test for EoL, EoF
 backward model =
-    { model | point = model.point - 1} -- TODO test for EoL, BoF
+    if ((String.slice (model.point - 1) model.point model.world) == wall) || model.point < 1 then
+        { model | point = model.point } -- TODO test for EoL, BoF
+    else
+        { model | point = model.point - 1}
 
 -- Moves point up/down lines
 upward model =
-    model -- TODO traverse back to EoL to measure column(get-column), traverse back to next EoL and forward to appropriate column,
+    let columnPoint = Maybe.withDefault 0 (List.head (List.reverse (String.indexes newLine (String.left model.point model.world))))
+        row =  model.point - columnPoint
+        nextNewLineCharacter = Maybe.withDefault 0 (Array.get ((getcolumn model) - 2) (Array.fromList (String.indexes newLine model.world)))
+    in
+    { model | point = nextNewLineCharacter + row }
 downward model =
-    model -- TODO " forward
+    let columnPoint = Maybe.withDefault 0 (List.head (List.reverse (String.indexes newLine (String.left model.point model.world))))
+        row =  model.point - columnPoint
+        nextNewLineCharacter = Maybe.withDefault 0 (Array.get (getcolumn model) (Array.fromList (String.indexes newLine model.world)))
+    in
+    { model | point = nextNewLineCharacter + row }
 
 -- Moves point to beginning/end of lines
 startline model =
-    model -- TODO traverse back to EoL
+    { model | point = model.point + 2}
 endline model =
-    model -- TODO traverse forward to EoL
+    { model | point = model.point - 2}
 
 -- Utility functions
 getcolumn: Model -> Int -- Gets column of point
+-- Gets the string from the left of the point.
+-- Gets all indexes of new line characters from that string then takes the length of that list.
 getcolumn model =
-    1 -- TODO traverse back to EoL to measure
+    List.length (String.indexes newLine (String.left model.point model.world))
 
 -- Traverses string
 --  for number of characters
@@ -57,8 +78,8 @@ getcolumn model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { world = "Hello World\nNewline?\nExcellent"
-      , point = 7
+    ( { world = "\n+----+----+----+\n#              #\n+----+----+    +\n|         |      \n+    +----+----+----+"
+      , point = 18
       }
     , Cmd.none
     )
@@ -76,7 +97,11 @@ update msg model =
             case code of
                 "h" -> (backward model, Cmd.none)
                 "l" -> (forward model, Cmd.none)
-                _   -> ( { model | world = model.world ++ code }, Cmd.none )
+                "j" -> (upward model, Cmd.none)
+                "k" -> (downward model, Cmd.none)
+                "^" -> (startline model, Cmd.none)
+                "$" -> (endline model, Cmd.none)
+                _   -> ( { model | world = model.world }, Cmd.none )
         ClearPressed ->
             ( model, Cmd.none )
 
