@@ -26,6 +26,7 @@ type alias Model =
     , point : Int
     }
 
+-- Regular utilities
 -- Character utilities
 wall = "#"
 newLine = "\n"
@@ -49,6 +50,7 @@ access: String -> Int -> String
 access string index =
     String.slice index (index + 1) string
 
+
 -- Model utilities
 scan: Model-> Int -> String
 scan model distance =
@@ -56,23 +58,16 @@ scan model distance =
 -- Usage: scan model 0 is under the cursor, scan model +/-1 is forward/backward
 -- TODO who wants scan to check for world boundaries? (0 and length of world)
 
+
 seek: Model-> Int -> Model
 seek model distance =
     { model | point  = model.point + distance }
 
-
 -- Robust utility function that find char and begining/endlines could be built on
--- Returns the stream of distances to a string
-locate: Model -> Int -> Char -> Int
-locate model number char =
-    if number < 0 then
-        1
-    else
-        -1 --TODO Implement
-
-
-
-
+-- Returns the stream of distances to the given char
+locate: Model -> Char -> Int
+locate model char =
+    1
 
 
 -- Operator functions
