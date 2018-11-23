@@ -31,14 +31,22 @@ type alias Model =
 wall = "#"
 newLine = "\n"
 
-obstructs: Operator -> String -> Bool
+
+type Motion = Lateral | Vertical
+obstructs: Motion -> String -> Bool
 obstructs op char =
-    case op of
-      _ ->
-          case char of
-               "#" -> True
-               "\n" -> True
-               _ -> False
+    case char of
+        "#" -> True
+        "\n" -> True
+        _ -> case op of
+                 Lateral ->
+                     case char of
+                         "|" -> True
+                         _ -> False
+                 Vertical ->
+                     case char of
+                         "-" -> True
+                         _ -> False
 
 -- String utilities
 --- TODO It's worth discussing any differences between Strings and list of Chars
@@ -63,27 +71,33 @@ seek: Model-> Int -> Model
 seek model distance =
     { model | point  = model.point + distance }
 
+lt a b =
+    b < a
+gt a b =
+    b > a
 -- Robust utility function that find char and begining/endlines could be built on
 -- Returns the stream of distances to the given char
-locate: Model -> Char -> Int
-locate model char =
-    1
-
+-- Figure out how get as a stream(lazy list) TODO
+-- Figure out how to wrap TODO
+locateb: Model -> String -> List Int
+locateb model char =
+    (List.reverse (List.filter (lt model.point) (String.indexes char model.world)))
+locatef model char =
+    (List.filter (gt model.point) (String.indexes char model.world))
 
 -- Operator functions
 -- Moves point forward/backward by a character
- -- TODO test for EoL
  -- TODO? || model.point < 1 This check may be taken up in scan
 type alias Operator = Model -> Model
 forward: Operator
 forward model =
-    if scan model 1 |> obstructs forward then
+    if scan model 1 |> obstructs Lateral then
         model
     else
         seek model 1
 backward: Operator
 backward model =
-    if scan model -1 |> obstructs backward then
+    if scan model -1 |> obstructs Lateral then
         model
     else
         seek model -1
@@ -105,9 +119,13 @@ downward model =
 -- Moves point to beginning/end of lines
 -- TODO Should they travel through obstructions?
 startline model =
-    { model | point = model.point + 2}
+    case List.head (locateb model newLine) of
+        Just a  -> {model | point = a+1 }
+        Nothing -> {model | point = 0}
 endline model =
-    { model | point = model.point - 2}
+    case List.head (locatef model newLine) of
+        Just a  -> {model | point = a-1 }
+        Nothing -> {model | point = String.length model.world}
 
 -- Utility functions
 getcolumn: Model -> Int -- Gets column of point
