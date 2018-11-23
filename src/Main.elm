@@ -7,7 +7,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Json.Decode as Decode
 import String
-
+import Debug
+import Array
+import Basics
 
 main : Program () Model Msg
 main =
@@ -24,29 +26,84 @@ type alias Model =
     , point : Int
     }
 
+-- Regular utilities
+-- Character utilities
 wall = "#"
 newLine = "\n"
 
+obstructs: Operator -> String -> Bool
+obstructs op char =
+    case op of
+      _ ->
+          case char of
+               "#" -> True
+               "\n" -> True
+               _ -> False
+
+-- String utilities
+--- TODO It's worth discussing any differences between Strings and list of Chars
+--- or how we might use the type system to organize the various char operations
+
+-- Returns the string/char?? at index location.
+--- Bamboozling that we need write this
+access: String -> Int -> String
+access string index =
+    String.slice index (index + 1) string
+
+
+-- Model utilities
+scan: Model-> Int -> String
+scan model distance =
+    access model.world (model.point + distance)
+-- Usage: scan model 0 is under the cursor, scan model +/-1 is forward/backward
+-- TODO who wants scan to check for world boundaries? (0 and length of world)
+
+
+seek: Model-> Int -> Model
+seek model distance =
+    { model | point  = model.point + distance }
+
+-- Robust utility function that find char and begining/endlines could be built on
+-- Returns the stream of distances to the given char
+locate: Model -> Char -> Int
+locate model char =
+    1
+
+
 -- Operator functions
 -- Moves point forward/backward by a character
-forward: Model -> Model
+ -- TODO test for EoL
+ -- TODO? || model.point < 1 This check may be taken up in scan
+type alias Operator = Model -> Model
+forward: Operator
 forward model =
-    if (String.slice (model.point + 1) (model.point + 2) model.world) == wall then
-      { model | point = model.point}
+    if scan model 1 |> obstructs forward then
+        model
     else
-      { model | point = model.point + 1} -- TODO test for EoL, EoF
+        seek model 1
+backward: Operator
 backward model =
-    if (String.slice (model.point - 1) model.point model.world) == wall then
-        { model | point = model.point } -- TODO test for EoL, BoF
+    if scan model -1 |> obstructs backward then
+        model
     else
-        { model | point = model.point - 1}
+        seek model -1
+
 -- Moves point up/down lines
 upward model =
-    model -- TODO traverse back to EoL to measure column(get-column), traverse back to next EoL and forward to appropriate column,
+    let columnPoint = Maybe.withDefault 0 (List.head (List.reverse (String.indexes newLine (String.left model.point model.world))))
+        row =  model.point - columnPoint
+        nextNewLineCharacter = Maybe.withDefault 0 (Array.get ((getcolumn model) - 2) (Array.fromList (String.indexes newLine model.world)))
+    in
+    { model | point = nextNewLineCharacter + row }
 downward model =
-    model -- TODO " forward
+    let columnPoint = Maybe.withDefault 0 (List.head (List.reverse (String.indexes newLine (String.left model.point model.world))))
+        row =  model.point - columnPoint
+        nextNewLineCharacter = Maybe.withDefault 0 (Array.get (getcolumn model) (Array.fromList (String.indexes newLine model.world)))
+    in
+    { model | point = nextNewLineCharacter + row }
 
 -- Moves point to beginning/end of lines
+-- TODO Should they travel through obstructions?
 startline model =
     { model | point = model.point + 2}
 endline model =
@@ -54,8 +111,10 @@ endline model =
 
 -- Utility functions
 getcolumn: Model -> Int -- Gets column of point
+-- Gets the string from the left of the point.
+-- Gets all indexes of new line characters from that string then takes the length of that list.
 getcolumn model =
-    1
+    List.length (String.indexes newLine (String.left model.point model.world))
 
 -- Traverses string
 --  for number of characters
@@ -65,7 +124,7 @@ getcolumn model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { world = "+----+----+----+\n#              #\n+----+----+    +\n|         |      \n+    +----+----+----+"
+    ( { world = "\n+----+----+----+\n#              #\n+----+----+    +\n|         |      \n+    +----+----+----+"
       , point = 18
       }
     , Cmd.none
@@ -84,8 +143,10 @@ update msg model =
             case code of
                 "h" -> (backward model, Cmd.none)
                 "l" -> (forward model, Cmd.none)
-                "I" -> (startline model, Cmd.none)
-                "A" -> (endline model, Cmd.none)
+                "k" -> (upward model, Cmd.none)
+                "j" -> (downward model, Cmd.none)
+                "^" -> (startline model, Cmd.none)
+                "$" -> (endline model, Cmd.none)
                 _   -> ( { model | world = model.world }, Cmd.none )
         ClearPressed ->
             ( model, Cmd.none )
@@ -107,7 +168,7 @@ keyDecoder =
 view : Model -> Html Msg
 view model =
     div
-        [ style "white-space" "pre"
+        [ style "white-space" "pre-wrap"
         , style "font-family" "monospace"
         ]
         [ text (String.slice 0 model.point model.world)
