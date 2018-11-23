@@ -85,9 +85,11 @@ locateb model char =
 locatef model char =
     (List.filter (gt model.point) (String.indexes char model.world))
 
+
 -- Operator functions
 -- Moves point forward/backward by a character
- -- TODO? || model.point < 1 This check may be taken up in scan
+-- TODO? || model.point < 1 This check may be taken up in scan
+-- TODO? reduce forward/backward to calls to a 'lateral' movement function
 type alias Operator = Model -> Model
 forward: Operator
 forward model =
@@ -125,7 +127,7 @@ startline model =
 endline model =
     case List.head (locatef model newLine) of
         Just a  -> {model | point = a-1 }
-        Nothing -> {model | point = String.length model.world}
+        Nothing -> {model | point = String.length model.world - 1}
 
 -- Utility functions
 getcolumn: Model -> Int -- Gets column of point
