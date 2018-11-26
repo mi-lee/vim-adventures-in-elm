@@ -31,7 +31,7 @@ newLine = "\n"
 --- or how we might use the type system to organize the various char operations
 
 -- Returns the string/char?? at index location.
---- Bamboozling that we need write this. E
+--- Bamboozling that we need write this.
 access: String -> Int -> String
 access string index =
     String.slice index (index + 1) string
@@ -46,6 +46,7 @@ gt a b =
 type alias Model =
     { world : String
     , point : Int
+    , numprefix : Int
     }
 
 scan: Model-> Int -> String
@@ -109,7 +110,7 @@ obstructs op char =
                          _ -> False
                  _ -> False
 -- }}}
--- Lateral and Vertical {{{
+-- Lateral: forward & backward {{{
 forward: Operator
 forward model =
     if scan model 1 |> obstructs Lateral then
@@ -124,7 +125,8 @@ backward model =
         seek model -1
 -- TODO? || model.point < 1 This check may be taken up in scan
 -- TODO? reduce forward/backward to calls to a 'lateral' movement function. Elm SHOULD have an enumeration type for this.
-
+--- }}}
+-- Vertical: upward & downward {{{
 upward model =
     case (List.take 2 (locateb model newLine)) of
         a :: b :: rest -> if (scan model (a-b) |> obstructs Vertical) || (a > (b-a)) then
@@ -154,7 +156,7 @@ downward model =
 -- TODO the way that these functions access world and point to test edge conditions is an ugly and leaky abstraction.
 -- }}}
 
--- Line {{{ 
+-- Line: startline & endline {{{ 
 startline model =
     case List.head (locateb model newLine) of
         Just a  -> seek model (-a+1)
@@ -165,13 +167,32 @@ endline model =
         Nothing -> {model | point = String.length model.world - 1}
 -- TODO Should they travel through obstructions?
 -- }}}
--- }}}
+-- Functional Operators {{{
+pushNumericPrefix: Int -> Model -> Model
+pushNumericPrefix num model =
+    { model | numprefix = 10*model.numprefix + num }
+clearNumericPrefix model =
+    { model | numprefix = 0 }
 
+repeatOp: Operator -> Int -> Operator
+repeatOp op times =
+    if times > 1 then
+        op >> repeatOp op (times - 1)
+    else
+        op
+
+prefixCompose: Operator -> Model -> Model
+prefixCompose op model =
+    clearNumericPrefix (repeatOp op model.numprefix model)
+-- }}}
+-- }}}
+        
 -- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
     ( { world = "\n+----+----+----+\n#              #\n+----+----+    +\n|         |      \n+    +----+----+----+"
       , point = 18
+      , numprefix = 0
       }
     , Cmd.none
     )
@@ -183,18 +204,27 @@ type Msg
     = KeyPress String
     | ClearPressed
 
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         KeyPress code ->
             case code of
-                "h" -> (backward model, Cmd.none)
-                "l" -> (forward model, Cmd.none)
-                "k" -> (upward model, Cmd.none)
-                "j" -> (downward model, Cmd.none)
-                "^" -> (startline model, Cmd.none)
-                "$" -> (endline model, Cmd.none)
+                "h" -> (prefixCompose backward model, Cmd.none)
+                "l" -> (prefixCompose forward model, Cmd.none)
+                "k" -> (prefixCompose upward model, Cmd.none)
+                "j" -> (prefixCompose downward model, Cmd.none)
+                "^" -> (prefixCompose startline model, Cmd.none)
+                "$" -> (prefixCompose endline model, Cmd.none)
+                "0" -> (pushNumericPrefix 0 model, Cmd.none)
+                "1" -> (pushNumericPrefix 1 model, Cmd.none)
+                "2" -> (pushNumericPrefix 2 model, Cmd.none)
+                "3" -> (pushNumericPrefix 3 model, Cmd.none)
+                "4" -> (pushNumericPrefix 4 model, Cmd.none)
+                "5" -> (pushNumericPrefix 5 model, Cmd.none)
+                "6" -> (pushNumericPrefix 6 model, Cmd.none)
+                "7" -> (pushNumericPrefix 7 model, Cmd.none)
+                "8" -> (pushNumericPrefix 8 model, Cmd.none)
+                "9" -> (pushNumericPrefix 9 model, Cmd.none)
                 _   -> ( { model | world = model.world }, Cmd.none )
         ClearPressed ->
             ( model, Cmd.none )
@@ -223,6 +253,8 @@ view model =
         , span [ style "background-color" "fuchsia" ]
             [ text (String.slice model.point (model.point + 1) model.world) ]
         , text (String.dropLeft (model.point + 1) model.world)
+        , div [] -- TODO for testing, can clean up UI later
+              [ text (String.fromInt model.numprefix) ]
         ]
 -- }}}
 -- vim:foldmethod=marker:foldlevel=0
