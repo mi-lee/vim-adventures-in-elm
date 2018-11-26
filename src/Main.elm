@@ -1,5 +1,5 @@
 module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
-
+--  Elm modules import & interfaces {{{
 import Browser
 import Browser.Events as Events
 import Html exposing (Attribute, Html, div, span, text)
@@ -21,18 +21,78 @@ main =
         }
 
 
+-- }}}
+
+-- String/Char/Misc utilities and aliases {{{
+wall = "#"
+newLine = "\n"
+
+--- TODO It's worth discussing any differences between Strings and list of Chars
+--- or how we might use the type system to organize the various char operations
+
+-- Returns the string/char?? at index location.
+--- Bamboozling that we need write this. E
+access: String -> Int -> String
+access string index =
+    String.slice index (index + 1) string
+
+-- Aliases for comparison operators, feel free to refactor code so we don't need these if you find it more aesthetic
+lt a b =
+    b < a
+gt a b =
+    b > a
+-- }}}
+-- Model: State, Selectors, Mutators {{{
 type alias Model =
     { world : String
     , point : Int
     }
 
--- Regular utilities
--- Character utilities
-wall = "#"
-newLine = "\n"
+scan: Model-> Int -> String
+scan model distance =
+    access model.world (model.point + distance)
+-- Usage: scan model 0 is under the cursor, scan model +/-1 is forward/backward
+-- TODO who wants scan to check for world boundaries? (0 and length of world)
 
+seek: Model-> Int -> Model
+seek model distance =
+    { model | point  = model.point + distance }
 
-type Motion = Lateral | Vertical
+-- Helper function to get locate working correctly
+pointrelative: Model -> Int -> Int
+pointrelative model index =
+  abs (model.point - index)
+-- Robust utility function that find char and begining/endlines could be built on
+-- Returns the stream of distances to the given char
+-- Figure out how get as a stream(lazy list) so that seeking small distances isn't O(n) TODO
+-- Figure out how to wrap around world TODO
+-- Refactor into 'locate backward/forward' with a custom type TODO
+locateb: Model -> String -> List Int
+locateb model char =
+    List.map (pointrelative model) (List.reverse (List.filter (lt model.point) (String.indexes char model.world)))
+locatef model char =
+    List.map (pointrelative model) (List.filter (gt model.point) (String.indexes char model.world))
+
+-- Utility functions
+getcolumn: Model -> Int -- Gets column of point
+getcolumn model =
+   case (locateb model newLine) of
+      first :: rest -> first
+      [] -> model.point
+
+-- Traverses string
+--  for number of characters
+--  until it encounters a character that returns True
+-- Reports the distance travelled? Or new Model?
+-- traverse: Model -> Int -> (Char -> Bool) -> Model
+
+-- }}} 
+-- Operator functions {{{
+type alias Operator = Model -> Model
+type Motion = Lateral  -- Moves point forward/backward by a character
+            | Vertical -- Moves point to the previous/next row
+            | Line     -- Moves point to the begining/end of rows
+-- Gameplay: Motion Obstruction {{{
 obstructs: Motion -> String -> Bool
 obstructs op char =
     case char of
@@ -47,50 +107,9 @@ obstructs op char =
                      case char of
                          "-" -> True
                          _ -> False
-
--- String utilities
---- TODO It's worth discussing any differences between Strings and list of Chars
---- or how we might use the type system to organize the various char operations
-
--- Returns the string/char?? at index location.
---- Bamboozling that we need write this
-access: String -> Int -> String
-access string index =
-    String.slice index (index + 1) string
-
-
--- Model utilities
-scan: Model-> Int -> String
-scan model distance =
-    access model.world (model.point + distance)
--- Usage: scan model 0 is under the cursor, scan model +/-1 is forward/backward
--- TODO who wants scan to check for world boundaries? (0 and length of world)
-
-
-seek: Model-> Int -> Model
-seek model distance =
-    { model | point  = model.point + distance }
-
-lt a b =
-    b < a
-gt a b =
-    b > a
--- Robust utility function that find char and begining/endlines could be built on
--- Returns the stream of distances to the given char
--- Figure out how get as a stream(lazy list) TODO
--- Figure out how to wrap TODO
-locateb: Model -> String -> List Int
-locateb model char =
-    (List.reverse (List.filter (lt model.point) (String.indexes char model.world)))
-locatef model char =
-    (List.filter (gt model.point) (String.indexes char model.world))
-
-
--- Operator functions
--- Moves point forward/backward by a character
--- TODO? || model.point < 1 This check may be taken up in scan
--- TODO? reduce forward/backward to calls to a 'lateral' movement function
-type alias Operator = Model -> Model
+                 _ -> False
+-- }}}
+-- Lateral and Vertical {{{
 forward: Operator
 forward model =
     if scan model 1 |> obstructs Lateral then
@@ -103,45 +122,52 @@ backward model =
         model
     else
         seek model -1
+-- TODO? || model.point < 1 This check may be taken up in scan
+-- TODO? reduce forward/backward to calls to a 'lateral' movement function. Elm SHOULD have an enumeration type for this.
 
--- Moves point up/down lines
 upward model =
-    let columnPoint = Maybe.withDefault 0 (List.head (List.reverse (String.indexes newLine (String.left model.point model.world))))
-        row =  model.point - columnPoint
-        nextNewLineCharacter = Maybe.withDefault 0 (Array.get ((getcolumn model) - 2) (Array.fromList (String.indexes newLine model.world)))
-    in
-    { model | point = nextNewLineCharacter + row }
-downward model =
-    let columnPoint = Maybe.withDefault 0 (List.head (List.reverse (String.indexes newLine (String.left model.point model.world))))
-        row =  model.point - columnPoint
-        nextNewLineCharacter = Maybe.withDefault 0 (Array.get (getcolumn model) (Array.fromList (String.indexes newLine model.world)))
-    in
-    { model | point = nextNewLineCharacter + row }
+    case (List.take 2 (locateb model newLine)) of
+        a :: b :: rest -> if (scan model (a-b) |> obstructs Vertical) || (a > (b-a)) then
+                                    model
+                                else
+                                    seek model (a-b)
+        a :: rest -> if (scan model a |> obstructs Vertical) || (model.point-a < a) then
+                                    model
+                                else
+                                    seek model a
+        [] -> model
 
--- Moves point to beginning/end of lines
--- TODO Should they travel through obstructions?
+downward model =
+    let col = getcolumn model in
+    case (List.take 2 (locatef model newLine)) of
+        a :: b :: rest -> if (b-a) < col || (scan model (col + a) |> obstructs Vertical) then
+                                    model
+                                else
+                                    seek model (a+col)
+        a :: rest -> let dest = (col + a) in
+            if String.length model.world < model.point + dest ||
+               (scan model dest |> obstructs Vertical) then
+                           model
+                       else
+                           seek model dest 
+        [] -> model
+-- TODO the way that these functions access world and point to test edge conditions is an ugly and leaky abstraction.
+-- }}}
+
+-- Line {{{ 
 startline model =
     case List.head (locateb model newLine) of
-        Just a  -> {model | point = a+1 }
+        Just a  -> seek model (-a+1)
         Nothing -> {model | point = 0}
 endline model =
     case List.head (locatef model newLine) of
-        Just a  -> {model | point = a-1 }
+        Just a  -> seek model (a-1)
         Nothing -> {model | point = String.length model.world - 1}
+-- TODO Should they travel through obstructions?
+-- }}}
+-- }}}
 
--- Utility functions
-getcolumn: Model -> Int -- Gets column of point
--- Gets the string from the left of the point.
--- Gets all indexes of new line characters from that string then takes the length of that list.
-getcolumn model =
-    List.length (String.indexes newLine (String.left model.point model.world))
-
--- Traverses string
---  for number of characters
---  until it encounters a character that returns True
--- Reports the distance travelled? Or new Model?
--- traverse: Model -> Int -> (Char -> Bool) -> Model
-
+-- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
     ( { world = "\n+----+----+----+\n#              #\n+----+----+    +\n|         |      \n+    +----+----+----+"
@@ -151,6 +177,8 @@ init =
     )
 
 
+--- }}}
+-- Controller: Update via messages optained from input  {{{
 type Msg
     = KeyPress String
     | ClearPressed
@@ -183,8 +211,8 @@ subscriptions model =
 keyDecoder : Decode.Decoder String
 keyDecoder =
     Decode.field "key" Decode.string
-
-
+-- }}}
+-- Runtime Loop: View function and UI listeners {{{
 view : Model -> Html Msg
 view model =
     div
@@ -196,3 +224,5 @@ view model =
             [ text (String.slice model.point (model.point + 1) model.world) ]
         , text (String.dropLeft (model.point + 1) model.world)
         ]
+-- }}}
+-- vim:foldmethod=marker:foldlevel=0
