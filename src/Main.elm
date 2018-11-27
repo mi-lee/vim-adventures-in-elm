@@ -59,35 +59,32 @@ seek: Model-> Int -> Model
 seek model distance =
     { model | point  = model.point + distance }
 
--- Helper function to get locate working correctly
+type Direction = Forward | Backward
+incr: Direction -> Int
+incr dir =
+    case dir of
+        Forward -> 1
+        Backward -> -1
+
 pointrelative: Model -> Int -> Int
 pointrelative model index =
   abs (model.point - index)
--- Robust utility function that find char and begining/endlines could be built on
+locate: Direction -> Model -> String -> List Int
+locate dir model char =
+    let index = String.indexes char model.world in
+    List.map (pointrelative model) <| case dir of
+        Forward -> List.filter (gt model.point) index
+        Backward -> List.reverse (List.filter (lt model.point) index)
 -- Returns the stream of distances to the given char
 -- Figure out how get as a stream(lazy list) so that seeking small distances isn't O(n) TODO
 -- Figure out how to wrap around world TODO
--- Refactor into 'locate backward/forward' with a custom type TODO
-locateb: Model -> String -> List Int
-locateb model char =
-    List.map (pointrelative model) (List.reverse (List.filter (lt model.point) (String.indexes char model.world)))
-locatef model char =
-    List.map (pointrelative model) (List.filter (gt model.point) (String.indexes char model.world))
-
--- Utility functions
 getcolumn: Model -> Int -- Gets column of point
 getcolumn model =
-   case (locateb model newLine) of
+   case (locate Backward model newLine) of
       first :: rest -> first
       [] -> model.point
 
--- Traverses string
---  for number of characters
---  until it encounters a character that returns True
--- Reports the distance travelled? Or new Model?
--- traverse: Model -> Int -> (Char -> Bool) -> Model
-
--- }}} 
+-- }}}
 -- Operator functions {{{
 type alias Operator = Model -> Model
 type Motion = Lateral  -- Moves point forward/backward by a character
@@ -111,24 +108,17 @@ obstructs op char =
                  _ -> False
 -- }}}
 -- Lateral: forward & backward {{{
-forward: Operator
-forward model =
-    if scan model 1 |> obstructs Lateral then
-        model
-    else
-        seek model 1
-backward: Operator
-backward model =
-    if scan model -1 |> obstructs Lateral then
-        model
-    else
-        seek model -1
--- TODO? || model.point < 1 This check may be taken up in scan
--- TODO? reduce forward/backward to calls to a 'lateral' movement function. Elm SHOULD have an enumeration type for this.
+column: Direction -> Operator
+column dir model =
+  let step = incr dir in
+  if scan model step |> obstructs Lateral then
+      model
+  else
+      seek model step
 --- }}}
 -- Vertical: upward & downward {{{
 upward model =
-    case (List.take 2 (locateb model newLine)) of
+    case (List.take 2 (locate Backward model newLine)) of
         a :: b :: rest -> if (scan model (a-b) |> obstructs Vertical) || (a > (b-a)) then
                                     model
                                 else
@@ -141,31 +131,63 @@ upward model =
 
 downward model =
     let col = getcolumn model in
-    case (List.take 2 (locatef model newLine)) of
-        a :: b :: rest -> if (b-a) < col || (scan model (col + a) |> obstructs Vertical) then
-                                    model
-                                else
-                                    seek model (a+col)
+    case (List.take 2 (locate Forward model newLine)) of
+        a :: b :: rest ->
+            if (b-a) < col || (scan model (col + a) |> obstructs Vertical) then
+                model
+            else
+                seek model (a+col)
         a :: rest -> let dest = (col + a) in
             if String.length model.world < model.point + dest ||
                (scan model dest |> obstructs Vertical) then
                            model
                        else
-                           seek model dest 
+                           seek model dest
         [] -> model
 -- TODO the way that these functions access world and point to test edge conditions is an ugly and leaky abstraction.
+-- row: Direction -> Operator
+-- row dir model =
+    -- case (List.take 2 (locate dir model newLine)) of
+        -- a :: b :: rest ->
+            -- let dest = case dir of
+                          -- Forward -> a + getcolumn model
+                          -- Backward -> a-b
+            -- in if (scan model dest |> obstructs Vertical) || 
+        -- a :: rest -> model
+        -- [] -> model
 -- }}}
-
--- Line: startline & endline {{{ 
+-- Line: startline & endline {{{
 startline model =
-    case List.head (locateb model newLine) of
+    case List.head (locate Backward model newLine) of
         Just a  -> seek model (-a+1)
         Nothing -> {model | point = 0}
 endline model =
-    case List.head (locatef model newLine) of
+    case List.head (locate Forward model newLine) of
         Just a  -> seek model (a-1)
         Nothing -> {model | point = String.length model.world - 1}
 -- TODO Should they travel through obstructions?
+-- }}}
+-- Find char {{{
+findforward: Model -> String -> Model
+findforward model char =
+    case locate Forward model char of
+        car :: cdr -> seek model car
+        [] -> model
+
+-- }}}
+-- Jump between matching brackets {{{
+jumpmatch: Model -> Model
+jumpmatch model =
+    case scan model 0 of
+        "(" -> findforward model ")"
+        ")" -> findforward model ")"
+        "{" -> findforward model "}"
+        "}" -> findforward model ")"
+        "<" -> findforward model ">"
+        ">" -> findforward model ")"
+        "[" -> findforward model "]"
+        "]" -> findforward model ")"
+        _ -> model
 -- }}}
 -- Functional Operators {{{
 pushNumericPrefix: Int -> Model -> Model
@@ -186,7 +208,7 @@ prefixCompose op model =
     clearNumericPrefix (repeatOp op model.numprefix model)
 -- }}}
 -- }}}
-        
+
 -- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
@@ -209,8 +231,8 @@ update msg model =
     case msg of
         KeyPress code ->
             case code of
-                "h" -> (prefixCompose backward model, Cmd.none)
-                "l" -> (prefixCompose forward model, Cmd.none)
+                "h" -> (prefixCompose (column Backward) model, Cmd.none)
+                "l" -> (prefixCompose (column Forward) model, Cmd.none)
                 "k" -> (prefixCompose upward model, Cmd.none)
                 "j" -> (prefixCompose downward model, Cmd.none)
                 "^" -> (prefixCompose startline model, Cmd.none)
