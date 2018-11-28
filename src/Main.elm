@@ -218,11 +218,11 @@ prefixCompose: Operator -> Model -> Model
 prefixCompose op model =
     clearNumericPrefix (repeatOp op model.numprefix model)
 -- }}}
-
+ascii = List.range 0 255 |> (List.map Char.fromCode) |> String.fromList
 -- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
-    ( { world = "0\n23\n567\n9ABCD\nF"
+    ( { world = ascii
       , point = 2
       , numprefix = 0
       }
