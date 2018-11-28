@@ -41,12 +41,17 @@ lt a b =
     b < a
 gt a b =
     b > a
+lte a b =
+    b <= a
+gte a b =
+    b >= a
 -- }}}
 -- Model: State, Selectors, Mutators {{{
 type alias Model =
     { world : String
     , point : Int
     , numprefix : Int
+    --, prefixop: String
     }
 
 scan: Model-> Int -> String
@@ -66,30 +71,36 @@ incr dir =
         Forward -> 1
         Backward -> -1
 
-pointrelative: Model -> Int -> Int
-pointrelative model index =
-  abs (model.point - index)
+relative: Int -> Int -> Int
+relative point index =
+  index - point
+
 locate: Direction -> Model -> String -> List Int
 locate dir model char =
     let index = String.indexes char model.world in
-    List.map (pointrelative model) <| case dir of
-        Forward -> List.filter (gt model.point) index
-        Backward -> List.reverse (List.filter (lt model.point) index)
+    List.map (relative model.point) <| case dir of
+        Forward -> List.filter (gte model.point) index
+        Backward -> List.reverse (List.filter (lte model.point) index)
 -- Returns the stream of distances to the given char
+-- Refactor so that locate traverses the list. This will let us restrict jumping motions TODO
 -- Figure out how get as a stream(lazy list) so that seeking small distances isn't O(n) TODO
 -- Figure out how to wrap around world TODO
+
 getcolumn: Model -> Int -- Gets column of point
 getcolumn model =
    case (locate Backward model newLine) of
-      first :: rest -> first
-      [] -> model.point
-
+      first :: rest -> -first
+      [] -> model.point+1
+--nextrow: Model -> String
+--nextrow model =
+    
+    
 -- }}}
--- Operator functions {{{
+-- Operator functions
 type alias Operator = Model -> Model
 type Motion = Lateral  -- Moves point forward/backward by a character
             | Vertical -- Moves point to the previous/next row
-            | Line     -- Moves point to the begining/end of rows
+            | Jump     -- Moves point by jumping to a location
 -- Gameplay: Motion Obstruction {{{
 obstructs: Motion -> String -> Bool
 obstructs op char =
@@ -118,15 +129,16 @@ column dir model =
 --- }}}
 -- Vertical: upward & downward {{{
 upward model =
+    let col = getcolumn model in
     case (List.take 2 (locate Backward model newLine)) of
-        a :: b :: rest -> if (scan model (a-b) |> obstructs Vertical) || (a > (b-a)) then
+        a :: b :: rest -> if (scan model (b - a) |> obstructs Vertical) || (col > ((a - b) - 1)) then
                                     model
                                 else
-                                    seek model (a-b)
-        a :: rest -> if (scan model a |> obstructs Vertical) || (model.point-a < a) then
+                                    seek model (b - a)
+        a :: rest -> if (scan model -a |> obstructs Vertical) || (model.point + a < -a) then
                                     model
                                 else
-                                    seek model a
+                                    { model | point = -a - 1 }
         [] -> model
 
 downward model =
@@ -138,55 +150,54 @@ downward model =
             else
                 seek model (a+col)
         a :: rest -> let dest = (col + a) in
-            if String.length model.world < model.point + dest ||
+            if (String.length model.world - 1) < (model.point + dest) ||
                (scan model dest |> obstructs Vertical) then
                            model
                        else
                            seek model dest
         [] -> model
--- TODO the way that these functions access world and point to test edge conditions is an ugly and leaky abstraction.
--- row: Direction -> Operator
--- row dir model =
-    -- case (List.take 2 (locate dir model newLine)) of
-        -- a :: b :: rest ->
-            -- let dest = case dir of
-                          -- Forward -> a + getcolumn model
-                          -- Backward -> a-b
-            -- in if (scan model dest |> obstructs Vertical) || 
-        -- a :: rest -> model
-        -- [] -> model
+-- TODO the way that these functions access world and point to test edge conditions isn't great
+-- Needs a proper line/row abstraction
+row: Direction -> Operator
+row dir model =
+    let col = getcolumn model
+    in 
+    case locate dir model newLine of
+        first :: second :: rest -> model
+        first :: rest -> model
+        [] -> model
+-- TODO actually merge the functions
 -- }}}
 -- Line: startline & endline {{{
-startline model =
-    case List.head (locate Backward model newLine) of
-        Just a  -> seek model (-a+1)
-        Nothing -> {model | point = 0}
-endline model =
-    case List.head (locate Forward model newLine) of
-        Just a  -> seek model (a-1)
-        Nothing -> {model | point = String.length model.world - 1}
+lineEnd: Direction -> Operator
+lineEnd dir model =
+    case (locate dir model newLine) of
+        car :: cdr -> seek model (car - (incr dir))
+        [] -> case dir of
+                  Forward -> {model | point = String.length model.world - 1}
+                  Backward -> {model | point = 0}
+
 -- TODO Should they travel through obstructions?
 -- }}}
 -- Find char {{{
-findforward: Model -> String -> Model
-findforward model char =
-    case locate Forward model char of
+find: Direction -> String -> Operator
+find dir char model =
+    case locate dir model char of
         car :: cdr -> seek model car
         [] -> model
-
 -- }}}
 -- Jump between matching brackets {{{
 jumpmatch: Model -> Model
 jumpmatch model =
     case scan model 0 of
-        "(" -> findforward model ")"
-        ")" -> findforward model ")"
-        "{" -> findforward model "}"
-        "}" -> findforward model ")"
-        "<" -> findforward model ">"
-        ">" -> findforward model ")"
-        "[" -> findforward model "]"
-        "]" -> findforward model ")"
+        "(" -> find Forward ")" model 
+        ")" -> find Backward "(" model
+        "{" -> find Forward "}" model
+        "}" -> find Backward "{" model
+        "<" -> find Forward ">" model
+        ">" -> find Backward "<" model
+        "[" -> find Forward "]" model
+        "]" -> find Backward "[" model
         _ -> model
 -- }}}
 -- Functional Operators {{{
@@ -207,13 +218,12 @@ prefixCompose: Operator -> Model -> Model
 prefixCompose op model =
     clearNumericPrefix (repeatOp op model.numprefix model)
 -- }}}
--- }}}
 
 -- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
-    ( { world = "\n+----+----+----+\n#              #\n+----+----+    +\n|         |      \n+    +----+----+----+"
-      , point = 18
+    ( { world = "0\n23\n567\n9ABCD\nF"
+      , point = 2
       , numprefix = 0
       }
     , Cmd.none
@@ -235,8 +245,9 @@ update msg model =
                 "l" -> (prefixCompose (column Forward) model, Cmd.none)
                 "k" -> (prefixCompose upward model, Cmd.none)
                 "j" -> (prefixCompose downward model, Cmd.none)
-                "^" -> (prefixCompose startline model, Cmd.none)
-                "$" -> (prefixCompose endline model, Cmd.none)
+                "^" -> (prefixCompose (lineEnd Backward) model, Cmd.none)
+                "$" -> (prefixCompose (lineEnd Forward) model, Cmd.none)
+                "%" -> (prefixCompose jumpmatch model, Cmd.none)
                 "0" -> (pushNumericPrefix 0 model, Cmd.none)
                 "1" -> (pushNumericPrefix 1 model, Cmd.none)
                 "2" -> (pushNumericPrefix 2 model, Cmd.none)
@@ -275,8 +286,8 @@ view model =
         , span [ style "background-color" "fuchsia" ]
             [ text (String.slice model.point (model.point + 1) model.world) ]
         , text (String.dropLeft (model.point + 1) model.world)
-        , div [] -- TODO for testing, can clean up UI later
-              [ text (String.fromInt model.numprefix) ]
+        --, div [] -- TODO for testing, can clean up UI later
+        --      [ text (String.fromInt model.numprefix) ]
         ]
 -- }}}
 -- vim:foldmethod=marker:foldlevel=0
