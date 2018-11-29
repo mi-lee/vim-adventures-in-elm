@@ -1,4 +1,4 @@
-module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
+port module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
 --  Elm modules import & interfaces {{{
 import Browser
 import Browser.Events as Events
@@ -6,10 +6,13 @@ import Html exposing (Attribute, Html, div, span, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Json.Decode as Decode
+import Json.Encode as E
 import String
 import Debug
 import Array
 import Basics
+
+port audio_event : E.Value -> Cmd msg
 
 main : Program () Model Msg
 main =
@@ -93,8 +96,8 @@ getcolumn model =
       [] -> model.point+1
 --nextrow: Model -> String
 --nextrow model =
-    
-    
+
+
 -- }}}
 -- Operator functions
 type alias Operator = Model -> Model
@@ -135,7 +138,7 @@ upward model =
                                     model
                                 else
                                     seek model (b - a)
-        a :: rest -> if (scan model -a |> obstructs Vertical) || (model.point + a < -a) then
+        a :: rest -> if (access model.world ( -a - 1) |> obstructs Vertical) || (model.point + a < -a) then
                                     model
                                 else
                                     { model | point = -a - 1 }
@@ -161,7 +164,7 @@ downward model =
 row: Direction -> Operator
 row dir model =
     let col = getcolumn model
-    in 
+    in
     case locate dir model newLine of
         first :: second :: rest -> model
         first :: rest -> model
@@ -190,7 +193,7 @@ find dir char model =
 jumpmatch: Model -> Model
 jumpmatch model =
     case scan model 0 of
-        "(" -> find Forward ")" model 
+        "(" -> find Forward ")" model
         ")" -> find Backward "(" model
         "{" -> find Forward "}" model
         "}" -> find Backward "{" model
@@ -214,16 +217,30 @@ repeatOp op times =
     else
         op
 
-prefixCompose: Operator -> Model -> Model
+prefixCompose: Operator -> Model -> Model -- REFACTOR Should really just take and return an Operator?
 prefixCompose op model =
     clearNumericPrefix (repeatOp op model.numprefix model)
 -- }}}
+
+-- Worlds and Levels {{{
 ascii = List.range 0 255 |> (List.map Char.fromCode) |> String.fromList
+level1 = "#######      |\n#  k  #  #   |\n# hl #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -         \n#########"
+
+-- TODO abstract;conventional entry and exit points
+-- TODO implement file read or macro }}}
+-- Sound {{{
+-- }}}
+-- Operators as a resource: stockpiles {{{
+---stock:
+---consume: Model -> Model
+---pile: Model -> Model
+-- TODO }}}
+
 -- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
-    ( { world = ascii
-      , point = 2
+    ( { world = level1
+      , point = 33
       , numprefix = 0
       }
     , Cmd.none
@@ -280,14 +297,12 @@ view : Model -> Html Msg
 view model =
     div
         [ style "white-space" "pre-wrap"
-        , style "font-family" "monospace"
+        , style "font-family" "Unifont, monospace"
         ]
         [ text (String.slice 0 model.point model.world)
         , span [ style "background-color" "fuchsia" ]
             [ text (String.slice model.point (model.point + 1) model.world) ]
         , text (String.dropLeft (model.point + 1) model.world)
-        --, div [] -- TODO for testing, can clean up UI later
-        --      [ text (String.fromInt model.numprefix) ]
         ]
 -- }}}
 -- vim:foldmethod=marker:foldlevel=0
