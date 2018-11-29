@@ -224,7 +224,19 @@ prefixCompose op model =
 
 -- Worlds and Levels {{{
 ascii = List.range 0 255 |> (List.map Char.fromCode) |> String.fromList
-level1 = "#######      |\n#  k  #  #   |\n# hl #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -         \n#########"
+
+--top left of box is point 312
+level1 = "Welcome to level 1 in Vim Adventures Spinoff!\nThis level hopes to encourage you to get comfortable using the basic movement keys: h, j, k, l. \nWalls are comprised of # keys, which you may not move through.\n\nTry to explore the map and get to the finish line!\n\n###################################################\n#    l ->      #                                  #\n#   ########   # ^ ########   #################   #\n# j #      #   # | #      #   #         <- h      #\n#   #  (:  #   #   #  :)  #   #   #################\n# | #      #   # k #      #   #                   #\n# V ########   #   ########   ################    #\n#                             #                   #\n###############################===#################\n                              FINISH               \n"
+
+--top left of box is point 293
+level2 = "Level 2:\nThis level encourages using the beginning and end line keys: ^ and $\nThey allow you to jump forward or backward to the end of a line, which\nmeans you can jump over obstacles!\n\nTry using the ^ and $ keys to jump from wall to wall!\n\n###################################################\n#        #    Y O U    #                          #\n###############################################   #\n#              #     S H A L L     #              #\n#   ###############################################\n#         #    N O T    #                         #\n##############################################    #\n#                 # P A S S  #                    #\n##====#############################################\n FINISH                                            \n"
+
+--top left of box is point 340
+level3 = "Level 3:\nThis level encourages using the % operator.\nThis also a new way to avoid obstacles, by jumping to the matching\nopen or close bracket.\nYou may think of it as a secret tunnel that ends at the other matching bracket.\n\nTry hitting % when you find a bracket to avoid the obstacle!\n\n\n###################################################\n#      (  #    Y O U    #             )           #\n###############################################   #\n#       <       #     S H A L L     #     >       #\n#   ###############################################\n#      {    #    N O T    #     }     [           #\n##############################################    #\n#          ]       # P A S S  #                   #\n##====#############################################\n FINISH                                            \n"
+
+--top left of box is point 363
+level4 = "Level 4:\nThis level encourages using the numbers!\nNumbers allow you to repeat instructions without pressing the keys\nover and over. If you type a number and then type an action such\nas moving, you will move that many times.\n\nTry using the numbers to help you efficiently move up and down through the maze!\n\n\n#####################################################\n#   #       #       #       #       #       #       #\n#   #       #       #       #       #       #       #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#       #       #       #       #       #       #   #\n#       #       #       #       #       #       #   #\n#################################################===#\n                                               FINISH\n"
+
 
 -- TODO abstract;conventional entry and exit points
 -- TODO implement file read or macro }}}
@@ -239,8 +251,8 @@ level1 = "#######      |\n#  k  #  #   |\n# hl #  |   |\n#  j  #  |   |\n##   #
 -- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
-    ( { world = level1
-      , point = 33
+    ( { world = level4
+      , point = 363
       , numprefix = 0
       }
     , Cmd.none
