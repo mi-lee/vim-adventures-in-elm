@@ -51,6 +51,7 @@ type alias Model =
     { world : String
     , point : Int
     , numprefix : Int
+    , score : Int
     --, prefixop: String
     }
 
@@ -216,7 +217,15 @@ repeatOp op times =
 
 prefixCompose: Operator -> Model -> Model
 prefixCompose op model =
-    clearNumericPrefix (repeatOp op model.numprefix model)
+    (clearNumericPrefix (repeatOp op model.numprefix model))
+
+decrementScore: Int -> Model -> Model
+decrementScore n model = 
+    if model.score > 0 then
+        {model | score = model.score - n}
+    else
+        model
+
 -- }}}
 ascii = List.range 0 255 |> (List.map Char.fromCode) |> String.fromList
 -- Game Initialization {{{
@@ -225,10 +234,10 @@ init =
     ( { world = ascii
       , point = 2
       , numprefix = 0
+      , score = 10
       }
     , Cmd.none
     )
-
 
 --- }}}
 -- Controller: Update via messages optained from input  {{{
@@ -241,24 +250,24 @@ update msg model =
     case msg of
         KeyPress code ->
             case code of
-                "h" -> (prefixCompose (column Backward) model, Cmd.none)
-                "l" -> (prefixCompose (column Forward) model, Cmd.none)
-                "k" -> (prefixCompose upward model, Cmd.none)
-                "j" -> (prefixCompose downward model, Cmd.none)
-                "^" -> (prefixCompose (lineEnd Backward) model, Cmd.none)
-                "$" -> (prefixCompose (lineEnd Forward) model, Cmd.none)
-                "%" -> (prefixCompose jumpmatch model, Cmd.none)
-                "0" -> (pushNumericPrefix 0 model, Cmd.none)
-                "1" -> (pushNumericPrefix 1 model, Cmd.none)
-                "2" -> (pushNumericPrefix 2 model, Cmd.none)
-                "3" -> (pushNumericPrefix 3 model, Cmd.none)
-                "4" -> (pushNumericPrefix 4 model, Cmd.none)
-                "5" -> (pushNumericPrefix 5 model, Cmd.none)
-                "6" -> (pushNumericPrefix 6 model, Cmd.none)
-                "7" -> (pushNumericPrefix 7 model, Cmd.none)
-                "8" -> (pushNumericPrefix 8 model, Cmd.none)
-                "9" -> (pushNumericPrefix 9 model, Cmd.none)
-                _   -> ( { model | world = model.world }, Cmd.none )
+                "h" -> (decrementScore 1 (prefixCompose (column Backward) model), Cmd.none)
+                "l" -> (decrementScore 1 (prefixCompose (column Forward) model), Cmd.none)
+                "k" -> (decrementScore 1 (prefixCompose upward model), Cmd.none)
+                "j" -> (decrementScore 1 (prefixCompose downward model), Cmd.none)
+                "^" -> (decrementScore 1 (prefixCompose (lineEnd Backward) model), Cmd.none)
+                "$" -> (decrementScore 1 (prefixCompose (lineEnd Forward) model), Cmd.none)
+                "%" -> (decrementScore 1 (prefixCompose jumpmatch model), Cmd.none)
+                "0" -> (decrementScore 1 (pushNumericPrefix 0 model), Cmd.none)
+                "1" -> (decrementScore 1 (pushNumericPrefix 1 model), Cmd.none)
+                "2" -> (decrementScore 1 (pushNumericPrefix 2 model), Cmd.none)
+                "3" -> (decrementScore 1 (pushNumericPrefix 3 model), Cmd.none)
+                "4" -> (decrementScore 1 (pushNumericPrefix 4 model), Cmd.none)
+                "5" -> (decrementScore 1 (pushNumericPrefix 5 model), Cmd.none)
+                "6" -> (decrementScore 1 (pushNumericPrefix 6 model), Cmd.none)
+                "7" -> (decrementScore 1 (pushNumericPrefix 7 model), Cmd.none)
+                "8" -> (decrementScore 1 (pushNumericPrefix 8 model), Cmd.none)
+                "9" -> (decrementScore 1 (pushNumericPrefix 9 model), Cmd.none)
+                _   -> ( { model | score = model.score - 1 } , Cmd.none )
         ClearPressed ->
             ( model, Cmd.none )
 
@@ -288,6 +297,8 @@ view model =
         , text (String.dropLeft (model.point + 1) model.world)
         --, div [] -- TODO for testing, can clean up UI later
         --      [ text (String.fromInt model.numprefix) ]
+        , 
+        div [ style "font-size" "150%" ] [ text ("Score: " ++ (String.fromInt model.score))]
         ]
 -- }}}
 -- vim:foldmethod=marker:foldlevel=0
