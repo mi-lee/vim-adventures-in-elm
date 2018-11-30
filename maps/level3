@@ -1,0 +1,19 @@
+Level 3:
+This level encourages using the % operator. 
+This also a new way to avoid obstacles, by jumping to the matching
+open or close bracket. 
+You may think of it as a secret tunnel that ends at the other matching bracket. 
+
+Try hitting % when you find a bracket to avoid the obstacle!
+
+###################################################
+#      (  #    Y O U    #             )           #
+###############################################   #
+#       <       #     S H A L L     #     >       #
+#   ###############################################
+#      {    #    N O T    #     }     [           #
+##############################################    #
+#          ]       # P A S S  #                   #                                              
+##====#############################################
+ FINISH                                             
+             

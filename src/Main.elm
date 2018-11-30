@@ -9,7 +9,9 @@ import Json.Decode as Decode
 import Json.Encode as E
 import String
 import Debug
+import Tuple
 import Array
+import Dict exposing (Dict)
 import Basics
 
 port audio_event : E.Value -> Cmd msg
@@ -38,7 +40,10 @@ newLine = "\n"
 access: String -> Int -> String
 access string index =
     String.slice index (index + 1) string
-
+-- Returns new string with replaced index
+set: String -> Int -> String -> String
+set string index replace =
+    String.slice 0 index string ++ replace ++ (String.slice (index + 1) (String.length string) string)
 -- Aliases for comparison operators, feel free to refactor code so we don't need these if you find it more aesthetic
 lt a b =
     b < a
@@ -49,14 +54,15 @@ lte a b =
 gte a b =
     b >= a
 -- }}}
--- Model: State, Selectors, Mutators {{{
 type alias Model =
     { world : String
     , point : Int
     , numprefix : Int
-    --, prefixop: String
+    , score : Int
+    , stock : Dict String Int
     }
 
+-- Model: State, Selectors, Mutators {{{
 scan: Model-> Int -> String
 scan model distance =
     access model.world (model.point + distance)
@@ -99,28 +105,12 @@ getcolumn model =
 
 
 -- }}}
+
 -- Operator functions
 type alias Operator = Model -> Model
 type Motion = Lateral  -- Moves point forward/backward by a character
             | Vertical -- Moves point to the previous/next row
             | Jump     -- Moves point by jumping to a location
--- Gameplay: Motion Obstruction {{{
-obstructs: Motion -> String -> Bool
-obstructs op char =
-    case char of
-        "#" -> True
-        "\n" -> True
-        _ -> case op of
-                 Lateral ->
-                     case char of
-                         "|" -> True
-                         _ -> False
-                 Vertical ->
-                     case char of
-                         "-" -> True
-                         _ -> False
-                 _ -> False
--- }}}
 -- Lateral: forward & backward {{{
 column: Direction -> Operator
 column dir model =
@@ -203,6 +193,9 @@ jumpmatch model =
         "]" -> find Backward "[" model
         _ -> model
 -- }}}
+replaceChar: String -> Operator
+replaceChar string =
+    (\(model) -> { model | world = set model.world model.point " "})
 -- Functional Operators {{{
 pushNumericPrefix: Int -> Model -> Model
 pushNumericPrefix num model =
@@ -217,39 +210,123 @@ repeatOp op times =
     else
         op
 
-prefixCompose: Operator -> Model -> Model -- REFACTOR Should really just take and return an Operator?
-prefixCompose op model =
-    clearNumericPrefix (repeatOp op model.numprefix model)
+prefixCompose: Operator -> Operator
+prefixCompose op =
+    (\(model) -> (clearNumericPrefix (repeatOp op model.numprefix model)))
+
 -- }}}
 
+
+-- Gameplay: Motion Obstruction {{{
+obstructs: Motion -> String -> Bool
+obstructs op char =
+    case char of
+        "#" -> True
+        "\n" -> True
+        _ -> case op of
+                 Lateral ->
+                     case char of
+                         "|" -> True
+                         _ -> False
+                 Vertical ->
+                     case char of
+                         "-" -> True
+                         _ -> False
+                 _ -> False
+-- }}}
 -- Worlds and Levels {{{
---Levels: List String
---Levels = [ level1, ascii]
+type alias Level = (String, Int)
+world: Level -> String
+world level = Tuple.first level
+start: Level -> Int
+start level = Tuple.second level
+ascii = (List.range 0 255 |> (List.map Char.fromCode) |> String.fromList, 65)
 
+level0 = ("#######      |\n#  k  #  #   |\n# hl #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -         \n#########", 33)
+level1 = ("Welcome to level 1 in Vim Adventures Spinoff!\nThis level hopes to encourage you to get comfortable using the basic movement keys: h, j, k, l. \nWalls are comprised of # keys, which you may not move through.\n\nTry to explore the map and get to the finish line!\n\n###################################################\n#    l ->      #                                  #\n#   ########   # ^ ########   #################   #\n# j #      #   # | #      #   #         <- h      #\n#   #  (:  #   #   #  :)  #   #   #################\n# | #      #   # k #      #   #                   #\n# V ########   #   ########   ################    #\n#                             #                   #\n###############################===#################\n                              FINISH               \n", 1)
+--top left of box is point 293
+level2 = ("Level 2:\nThis level encourages using the beginning and end line keys: ^ and $\nThey allow you to jump forward or backward to the end of a line, which\nmeans you can jump over obstacles!\n\nTry using the ^ and $ keys to jump from wall to wall!\n\n###################################################\n#        #    Y O U    #                          #\n###############################################   #\n#              #     S H A L L     #              #\n#   ###############################################\n#         #    N O T    #                         #\n##############################################    #\n#                 # P A S S  #                    #\n##====#############################################\n FINISH                                            \n", 293)
 
-ascii = List.range 0 255 |> (List.map Char.fromCode) |> String.fromList
-level1 = "#######      |\n#  k  #  #   |\n# hl #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -         \n#########"
+--top left of box is point 340
+level3 = ("Level 3:\nThis level encourages using the % operator.\nThis also a new way to avoid obstacles, by jumping to the matching\nopen or close bracket.\nYou may think of it as a secret tunnel that ends at the other matching bracket.\n\nTry hitting % when you find a bracket to avoid the obstacle!\n\n\n###################################################\n#      (  #    Y O U    #             )           #\n###############################################   #\n#       <       #     S H A L L     #     >       #\n#   ###############################################\n#      {    #    N O T    #     }     [           #\n##############################################    #\n#          ]       # P A S S  #                   #\n##====#############################################\n FINISH                                            \n", 340)
+
+--top left of box is point 363
+level4 = ("Level 4:\nThis level encourages using the numbers!\nNumbers allow you to repeat instructions without pressing the keys\nover and over. If you type a number and then type an action such\nas moving, you will move that many times.\n\nTry using the numbers to help you efficiently move up and down through the maze!\n\n\n#####################################################\n#   #       #       #       #       #       #       #\n#   #       #       #       #       #       #       #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#       #       #       #       #       #       #   #\n#       #       #       #       #       #       #   #\n#################################################===#\n                                               FINISH\n", 363)
+
 
 -- TODO abstract;conventional entry and exit points
 -- TODO implement file read or macro }}}
 -- Sound {{{
 -- }}}
 -- Operators as a resource: stockpiles {{{
----stock:
----consume: Model -> Model
----pile: Model -> Model
+stock: Dict String Int
+stock = Dict.fromList [ ("h", 40),
+                            ("j", 40),
+                            ("k", 40),
+                            ("l", 40),
+                            ("^", 0),
+                            ("$", 0),
+                            ("%", 0) ]
+getStock: String -> Model -> Int
+getStock char model =
+    case Dict.get char model.stock of
+        Just a -> a
+        Nothing -> 0
+showStock: Model -> String
+showStock model =
+    Dict.foldl (\(key) (val) (accum) -> "\n" ++ key ++ " : " ++ (String.fromInt val) ++ accum) "" model.stock
+decrementStock: String -> Model -> Model
+decrementStock char model =
+    { model | stock = Dict.update char (\(x) -> case x of
+                                                    Just a -> Just (a - 1)
+                                                    Nothing -> Nothing) model.stock}
+incrementStock: String -> Model -> Model
+incrementStock char model =
+    { model | stock = Dict.update char (\(x) -> case x of
+                                                    Just a -> Just (a + 1)
+                                                    Nothing -> Nothing) model.stock}
+
+
+-- If insufficient stock of char, return identity operator, otherwise decrement stock and return operator
+consume: String -> Operator -> Operator
+consume char op =
+    (\(model) -> if getStock char model > 0 then
+                     op (decrementStock char model)
+                 else
+                    model)
+
+collect: Model -> Model
+collect model =
+    case scan model 0 of
+        "h" -> incrementStock "h" model |> (replaceChar " ")
+        "j" -> incrementStock "j" model |> (replaceChar " ")
+        "k" -> incrementStock "k" model |> (replaceChar " ")
+        "l" -> incrementStock "l" model |> (replaceChar " ")
+        "^" -> incrementStock "^" model |> (replaceChar " ")
+        "$" -> incrementStock "$" model |> (replaceChar " ")
+        "%" -> incrementStock "%" model |> (replaceChar " ")
+        _ -> model
+
+decrementScore: Int -> Model -> Model
+decrementScore n model =
+    if model.score > 0 then
+        {model | score = model.score - n}
+    else
+        model
+
 -- TODO }}}
 
 -- Game Initialization {{{
 init : ( Model, Cmd Msg )
 init =
-    ( { world = level1
-      , point = 33
+    ( { world = world level0
+      , point = start level0
       , numprefix = 0
+      , score = 10
+      , stock = stock
       }
     , Cmd.none
     )
-
 
 --- }}}
 -- Controller: Update via messages optained from input  {{{
@@ -261,27 +338,26 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         KeyPress code ->
-            case code of
-                "h" -> (prefixCompose (column Backward) model, Cmd.none)
-                "l" -> (prefixCompose (column Forward) model, Cmd.none)
-                "k" -> (prefixCompose upward model, Cmd.none)
-                "j" -> (prefixCompose downward model, Cmd.none)
-                "^" -> (prefixCompose (lineEnd Backward) model, Cmd.none)
-                "$" -> (prefixCompose (lineEnd Forward) model, Cmd.none)
-                "%" -> (prefixCompose jumpmatch model, Cmd.none)
-                "0" -> (pushNumericPrefix 0 model, Cmd.none)
-                "1" -> (pushNumericPrefix 1 model, Cmd.none)
-                "2" -> (pushNumericPrefix 2 model, Cmd.none)
-                "3" -> (pushNumericPrefix 3 model, Cmd.none)
-                "4" -> (pushNumericPrefix 4 model, Cmd.none)
-                "5" -> (pushNumericPrefix 5 model, Cmd.none)
-                "6" -> (pushNumericPrefix 6 model, Cmd.none)
-                "7" -> (pushNumericPrefix 7 model, Cmd.none)
-                "8" -> (pushNumericPrefix 8 model, Cmd.none)
-                "9" -> (pushNumericPrefix 9 model, Cmd.none)
+                "h" -> (consume code (prefixCompose (column Backward)) model |> collect, Cmd.none)
+                "l" -> (consume code (prefixCompose (column Forward)) model |> collect, Cmd.none)
+                "k" -> (consume code (prefixCompose upward) model |> collect, Cmd.none)
+                "j" -> (consume code (prefixCompose downward) model |> collect, Cmd.none)
+                "^" -> (consume code (prefixCompose (lineEnd Backward)) model |> collect, Cmd.none)
+                "$" -> (consume code (prefixCompose (lineEnd Forward)) model |> collect, Cmd.none)
+                "%" -> (consume code (prefixCompose jumpmatch) model |> collect, Cmd.none)
+                "0" -> ((pushNumericPrefix 0 model), Cmd.none)
+                "1" -> ((pushNumericPrefix 1 model), Cmd.none)
+                "2" -> ((pushNumericPrefix 2 model), Cmd.none)
+                "3" -> ((pushNumericPrefix 3 model), Cmd.none)
+                "4" -> ((pushNumericPrefix 4 model), Cmd.none)
+                "5" -> ((pushNumericPrefix 5 model), Cmd.none)
+                "6" -> ((pushNumericPrefix 6 model), Cmd.none)
+                "7" -> ((pushNumericPrefix 7 model), Cmd.none)
+                "8" -> ((pushNumericPrefix 8 model), Cmd.none)
+                "9" -> ((pushNumericPrefix 9 model), Cmd.none)
                 "[" -> (prevlevel model, Cmd.none)
                 "]" -> (nextlevel model, Cmd.none)
-                _   -> ( { model | world = model.world }, Cmd.none )
+                _   -> ( { model | score = model.score - 1 } , Cmd.none )
         ClearPressed ->
             ( model, Cmd.none )
 
@@ -303,12 +379,16 @@ view : Model -> Html Msg
 view model =
     div
         [ style "white-space" "pre-wrap"
-        , style "font-family" "Unifont, monospace"
+        , style "font-family" "unifont, monospace"
         ]
         [ text (String.slice 0 model.point model.world)
         , span [ style "background-color" "fuchsia" ]
             [ text (String.slice model.point (model.point + 1) model.world) ]
         , text (String.dropLeft (model.point + 1) model.world)
+        --, div [] -- TODO for testing, can clean up UI later
+        --      [ text (String.fromInt model.numprefix) ]
+        ,
+        div [ style "font-size" "50%" ] [ text ("Stock: " ++ showStock model)]
         ]
 -- }}}
 -- vim:foldmethod=marker:foldlevel=0
