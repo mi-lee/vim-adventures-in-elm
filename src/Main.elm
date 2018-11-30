@@ -223,6 +223,10 @@ prefixCompose op model =
 -- }}}
 
 -- Worlds and Levels {{{
+--Levels: List String
+--Levels = [ level1, ascii]
+
+
 ascii = List.range 0 255 |> (List.map Char.fromCode) |> String.fromList
 level1 = "#######      |\n#  k  #  #   |\n# hl #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -         \n#########"
 
@@ -275,6 +279,8 @@ update msg model =
                 "7" -> (pushNumericPrefix 7 model, Cmd.none)
                 "8" -> (pushNumericPrefix 8 model, Cmd.none)
                 "9" -> (pushNumericPrefix 9 model, Cmd.none)
+                "[" -> (prevlevel model, Cmd.none)
+                "]" -> (nextlevel model, Cmd.none)
                 _   -> ( { model | world = model.world }, Cmd.none )
         ClearPressed ->
             ( model, Cmd.none )
