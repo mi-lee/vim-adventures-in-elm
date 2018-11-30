@@ -60,6 +60,8 @@ type alias Model =
     , numprefix : Int
     , score : Int
     , stock : Dict String Int
+    , levels : List Level
+    , level : Int
     }
 
 -- Model: State, Selectors, Mutators {{{
@@ -242,28 +244,34 @@ start: Level -> Int
 start level = Tuple.second level
 ascii = (List.range 0 255 |> (List.map Char.fromCode) |> String.fromList, 65)
 
-level0 = ("#######      |\n#  k  #  #   |\n# hl #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -         \n#########", 33)
-level1 = ("Welcome to level 1 in Vim Adventures Spinoff!\nThis level hopes to encourage you to get comfortable using the basic movement keys: h, j, k, l. \nWalls are comprised of # keys, which you may not move through.\n\nTry to explore the map and get to the finish line!\n\n###################################################\n#    l ->      #                                  #\n#   ########   # ^ ########   #################   #\n# j #      #   # | #      #   #         <- h      #\n#   #  (:  #   #   #  :)  #   #   #################\n# | #      #   # k #      #   #                   #\n# V ########   #   ########   ################    #\n#                             #                   #\n###############################===#################\n                              FINISH               \n", 1)
+level0 = ("#######      |\n#  k  #  #   |\n# h l #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -       @  \n#########", 33)
+level1 = ("Welcome to level 1 in Vim Adventures Spinoff!\nThis level hopes to encourage you to get comfortable using the basic movement keys: h, j, k, l. \nWalls are comprised of # keys, which you may not move through.\n\nTry to explore the map and get to the finish line!\n\n###################################################\n#    l ->      #                                  #\n#   ########   # ^ ########   #################   #\n# j #      #   # | #      #   #         <- h      #\n#   #  (:  #   #   #  :)  #   #   #################\n# | #      #   # k #      #   #                   #\n# V ########   #   ########   ################    #\n#                             #                   #\n###############################===#################\n                              FINISH @               \n", 313)
 --top left of box is point 293
-level2 = ("Level 2:\nThis level encourages using the beginning and end line keys: ^ and $\nThey allow you to jump forward or backward to the end of a line, which\nmeans you can jump over obstacles!\n\nTry using the ^ and $ keys to jump from wall to wall!\n\n###################################################\n#        #    Y O U    #                          #\n###############################################   #\n#              #     S H A L L     #              #\n#   ###############################################\n#         #    N O T    #                         #\n##############################################    #\n#                 # P A S S  #                    #\n##====#############################################\n FINISH                                            \n", 293)
+level2 = ("Level 2:\nThis level encourages using the beginning and end line keys: ^ and $\nThey allow you to jump forward or backward to the end of a line, which\nmeans you can jump over obstacles!\n\nTry using the ^ and $ keys to jump from wall to wall!\n\n###################################################\n#      $ #    Y O U    #                          -\n###############################################   #\n-              #     S H A L L     # ^            #\n#   ###############################################\n#         #    N O T    #                         -\n##############################################    #\n-                 # P A S S  #                    #\n##====#############################################\n FINISH @                                            \n", 293)
 
 --top left of box is point 340
-level3 = ("Level 3:\nThis level encourages using the % operator.\nThis also a new way to avoid obstacles, by jumping to the matching\nopen or close bracket.\nYou may think of it as a secret tunnel that ends at the other matching bracket.\n\nTry hitting % when you find a bracket to avoid the obstacle!\n\n\n###################################################\n#      (  #    Y O U    #             )           #\n###############################################   #\n#       <       #     S H A L L     #     >       #\n#   ###############################################\n#      {    #    N O T    #     }     [           #\n##############################################    #\n#          ]       # P A S S  #                   #\n##====#############################################\n FINISH                                            \n", 340)
+level3 = ("Level 3:\nThis level encourages using the % operator.\nThis also a new way to avoid obstacles, by jumping to the matching\nopen or close bracket.\nYou may think of it as a secret tunnel that ends at the other matching bracket.\n\nTry hitting % when you find a bracket to avoid the obstacle!\n\n\n###################################################\n#  % % (  #    Y O U    #             )           #\n###############################################   #\n#       <       #     S H A L L     #     >       #\n#   ###############################################\n#      {    #    N O T    #     }     [           #\n##############################################    #\n#          ]       # P A S S  #                   #\n##====#############################################\n FINISH@                                           \n", 340)
 
 --top left of box is point 363
-level4 = ("Level 4:\nThis level encourages using the numbers!\nNumbers allow you to repeat instructions without pressing the keys\nover and over. If you type a number and then type an action such\nas moving, you will move that many times.\n\nTry using the numbers to help you efficiently move up and down through the maze!\n\n\n#####################################################\n#   #       #       #       #       #       #       #\n#   #       #       #       #       #       #       #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#       #       #       #       #       #       #   #\n#       #       #       #       #       #       #   #\n#################################################===#\n                                               FINISH\n", 363)
-
-
+level4 = ("Level 4:\nThis level encourages using the numbers!\nNumbers allow you to repeat instructions without pressing the keys\nover and over. If you type a number and then type an action such\nas moving, you will move that many times.\n\nTry using the numbers to help you efficiently move up and down through the maze!\n\n\n#####################################################\n#   #       #       #       #       #       #       #\n#   #       #       #       #       #       #       #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#   #   #   #   #   #   #   #   #   #   #   #   #   #\n#       #       #       #       #       #       #   #\n#       #       #       #       #       #       #   #\n#################################################===#\n                                      FINISH! YOU ARE A WINNER\n\n\n\nsecret stage @ shhh", 363)
+levels = [level1, level2, level3, level4, ascii]
 -- TODO abstract;conventional entry and exit points
+nextlevel model =
+    case model.levels of
+        lvl :: rest -> { model |
+                         world = world lvl,
+                         point = start lvl,
+                         levels = rest}
+        [] -> model
 -- TODO implement file read or macro }}}
 -- Sound {{{
 -- }}}
 -- Operators as a resource: stockpiles {{{
 stock: Dict String Int
-stock = Dict.fromList [ ("h", 40),
-                            ("j", 40),
-                            ("k", 40),
-                            ("l", 40),
+stock = Dict.fromList [ ("h", 80),
+                            ("j", 80),
+                            ("k", 80),
+                            ("l", 80),
                             ("^", 0),
                             ("$", 0),
                             ("%", 0) ]
@@ -283,7 +291,7 @@ decrementStock char model =
 incrementStock: String -> Model -> Model
 incrementStock char model =
     { model | stock = Dict.update char (\(x) -> case x of
-                                                    Just a -> Just (a + 1)
+                                                    Just a -> Just (a + 10)
                                                     Nothing -> Nothing) model.stock}
 
 
@@ -305,6 +313,7 @@ collect model =
         "^" -> incrementStock "^" model |> (replaceChar " ")
         "$" -> incrementStock "$" model |> (replaceChar " ")
         "%" -> incrementStock "%" model |> (replaceChar " ")
+        "@" -> nextlevel model
         _ -> model
 
 decrementScore: Int -> Model -> Model
@@ -324,6 +333,8 @@ init =
       , numprefix = 0
       , score = 10
       , stock = stock
+      , levels = levels
+      , level = 0
       }
     , Cmd.none
     )
@@ -338,6 +349,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         KeyPress code ->
+            case code of
                 "h" -> (consume code (prefixCompose (column Backward)) model |> collect, Cmd.none)
                 "l" -> (consume code (prefixCompose (column Forward)) model |> collect, Cmd.none)
                 "k" -> (consume code (prefixCompose upward) model |> collect, Cmd.none)
@@ -355,7 +367,6 @@ update msg model =
                 "7" -> ((pushNumericPrefix 7 model), Cmd.none)
                 "8" -> ((pushNumericPrefix 8 model), Cmd.none)
                 "9" -> ((pushNumericPrefix 9 model), Cmd.none)
-                "[" -> (prevlevel model, Cmd.none)
                 "]" -> (nextlevel model, Cmd.none)
                 _   -> ( { model | score = model.score - 1 } , Cmd.none )
         ClearPressed ->
