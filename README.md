@@ -8,7 +8,7 @@ To install Elm, follow the instructions on Elm's documentation [here](https://gu
 
 To install the dependencies, run `elm install`.
 
-To build the game locally, run `elm reactor` and navigate to `Main.elm`.
+To build the game locally, run `elm reactor` in the correct directory, and navigate to `Main.elm` on your localhost:8000.
 
 Enjoy!
 
