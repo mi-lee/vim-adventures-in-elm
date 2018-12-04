@@ -96,6 +96,14 @@
    Seems like more of a personal quality-of-life feature than a different type of search
    Probably not worth implementing as a separate search, but maybe worth thinking about
    the specific mechanics of the default search.
+* Undo                                                              :control:
+  vim has a history of edits to the file in a navigable tree.
+  However, these are only edits, not cursor position.
+  Cursor history is saved in some form that implements 'return jumps', e.g.
+  returning to the location where a search was called.
+** undo
+*** redo
+** jump previous
 * Port                                                                 :view:
   The displayed image of the game world.
   Analogous to the camera in a game with 2d/3d physics, but on a truly discrete domain.

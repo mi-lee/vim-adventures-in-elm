@@ -1,0 +1,17 @@
+Welcome to level 1 in Vim Adventures Spinoff!
+This level hopes to encourage you to get comfortable using the basic movement keys. 
+Walls are comprised of # and - keys, which you may not move through.
+
+Try to explore the map and get to the finish line!
+
+###################################################
+#    l ->      #                                  # 
+#   ########   # ^ ########   #################   #
+# j #      #   # | #      #   #         <- h      #
+#   #  (:  #   #   #  :)  #   #   #################
+# | #      #   # k #      #   #                   #
+# V ########   #   ########   ################    #
+#                             #                   #                                              
+###############################===#################
+                              FINISH               
+             
