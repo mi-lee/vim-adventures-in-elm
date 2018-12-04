@@ -458,7 +458,7 @@ ascii =
 
 
 level0 =
-    ( "#######      |\n#  k  #  #   |\n# h l #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -       @  \n#########", 33 )
+    ( "Welcome to level 0 in Vim Adventures Spinoff!\nThis level hopes to encourage you to get comfortable using the basic movement keys: h, j, k, l. \nWalls are comprised of # keys, which you may not move through.\n\nTry to explore the map and get to the finish line!\n\n#######      |\n#  k  #  #   |\n# h l #  |   |\n#  j  #  |   |\n##   ##  |   |\n         |   |\n---------+   |\n             |\n ##-----------\n  -       @  \n#########", 292 )
 
 
 level1 =
